@@ -24,8 +24,10 @@
 #include <Servo.h>
 Servo servo1;
 Servo servo2;
+Servo servo3;
 int angle1 = 0;
 int angle2 = 0;
+int angle3 = 0;
 
 // Update these with values suitable for your network.
 
@@ -36,7 +38,7 @@ const char* mqtt_server = "broker.mqtt-dashboard.com";
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
-#define MSG_BUFFER_SIZE	(50)
+#define MSG_BUFFER_SIZE  (50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
 
@@ -102,6 +104,24 @@ void callback(char* topic, byte* payload, unsigned int length) {
       }
   }
 
+   if (strcmp(topic, "feeding_moka") == 0){
+      // open
+      for(angle3 = 180; angle3>=1; angle3-=5)     // command to move from 180 degrees to 0 degrees 
+      {                                
+        servo3.write(angle3);              //command to rotate the servo to the specified angle
+        delay(5);                       
+      } 
+    
+      delay(550); // 30 grams of cat food
+    
+      // close
+      for(angle3 = 0; angle3 < 180; angle3 += 5)    // command to move from 0 degrees to 180 degrees 
+      {                                  
+        servo3.write(angle3);                 //command to rotate the servo to the specified angle
+        delay(5);                       
+      } 
+   }
+
   // Switch on the LED if an 1 was received as first character
   if ((char)payload[0] == '1') {
     digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
@@ -131,6 +151,7 @@ void reconnect() {
       uint16_t keKanan = client.subscribe("puter_kanan");
       uint16_t keAtas = client.subscribe("puter_atas");
       uint16_t keBawah = client.subscribe("puter_bawah");
+      uint16_t ayoMakan = client.subscribe("feeding_moka");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -144,6 +165,7 @@ void reconnect() {
 void setup() {
   servo1.attach(15);
   servo2.attach(16);
+  servo3.attach(17);
   pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   Serial.begin(115200);
   setup_wifi();
