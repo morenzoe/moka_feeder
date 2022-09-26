@@ -20,11 +20,12 @@
 
 #include <WiFi.h>
 #include <PubSubClient.h>
-#define BUILTIN_LED 2
+#define BUILTIN_LED 4
+#define Laser 2
 #include <Servo.h>
-Servo servo1;
-Servo servo2;
-Servo servo3;
+Servo ServoX;
+Servo ServoY;
+Servo ServoF;
 int angle1 = 0;
 int angle2 = 0;
 int angle3 = 0;
@@ -76,39 +77,39 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println();
   //Servo
 
-  if (strcmp(topic, "puter_kiri") == 0){
+  if (strcmp(topic, "mokaFeeder/puter_kiri") == 0){
     if(angle1 <= 170) {
       angle1 += 10;
-      servo1.write(angle1);
+      ServoX.write(angle1);
     }
   }
 
-  if (strcmp(topic, "puter_kanan") == 0){
+  if (strcmp(topic, "mokaFeeder/puter_kanan") == 0){
     if(angle1 >= 10) {
       angle1 -= 10;
-      servo1.write(angle1);
+      ServoX.write(angle1); 
     }
   }
 
-  if (strcmp(topic, "puter_atas") == 0){
+  if (strcmp(topic, "mokaFeeder/puter_atas") == 0){
     if(angle2 >= 10) {
       angle2 -= 10;
-      servo2.write(angle2);
+      ServoY.write(angle2);
     }
   }
 
-  if (strcmp(topic, "puter_bawah") == 0){
+  if (strcmp(topic, "mokaFeeder/puter_bawah") == 0){
      if(angle2 <= 170) {
         angle2 += 10;
-        servo2.write(angle2);
+        ServoY.write(angle2);
       }
   }
 
-   if (strcmp(topic, "feeding_moka") == 0){
+   if (strcmp(topic, "mokaFeeder/feeding_moka") == 0){
       // open
       for(angle3 = 180; angle3>=1; angle3-=5)     // command to move from 180 degrees to 0 degrees 
       {                                
-        servo3.write(angle3);              //command to rotate the servo to the specified angle
+        ServoF.write(angle3);              //command to rotate the servo to the specified angle
         delay(5);                       
       } 
     
@@ -117,19 +118,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
       // close
       for(angle3 = 0; angle3 < 180; angle3 += 5)    // command to move from 0 degrees to 180 degrees 
       {                                  
-        servo3.write(angle3);                 //command to rotate the servo to the specified angle
+        ServoF.write(angle3);                 //command to rotate the servo to the specified angle
         delay(5);                       
       } 
    }
 
-  // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1') {
-    digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is active low on the ESP-01)
-  } else {
-    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+   if (strcmp(topic, "mokaFeeder/laser") == 0){
+     digitalWrite(Laser, LOW);
+      } else if (strcmp(topic, "mokaFeeder/laser") == 1){
+        digitalWrite(Laser, HIGH);
   }
+
+//  // Switch on the LED if an 1 was received as first character
+//  if ((char)payload[0] == '1') {
+//    digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
+//    // but actually the LED is on; this is because
+//    // it is active low on the ESP-01)
+//  } else {
+//    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+//  }
 
 }
 
@@ -145,13 +152,14 @@ void reconnect() {
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("puter_kiri", "hello world");
+      client.publish("mokaFeeder/status", "meow");
       // ... and resubscribe
-      uint16_t keKiri = client.subscribe("puter_kiri");
-      uint16_t keKanan = client.subscribe("puter_kanan");
-      uint16_t keAtas = client.subscribe("puter_atas");
-      uint16_t keBawah = client.subscribe("puter_bawah");
-      uint16_t ayoMakan = client.subscribe("feeding_moka");
+      uint16_t keKiri = client.subscribe("mokaFeeder/puter_kiri");
+      uint16_t keKanan = client.subscribe("mokaFeeder/puter_kanan");
+      uint16_t keAtas = client.subscribe("mokaFeeder/puter_atas");
+      uint16_t keBawah = client.subscribe("mokaFeeder/puter_bawah");
+      uint16_t ayoMakan = client.subscribe("mokaFeeder/feeding_moka");
+      uint16_t laserOn = client.subscribe("mokaFeeder/laser");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -163,10 +171,11 @@ void reconnect() {
 }
 
 void setup() {
-  servo1.attach(15);
-  servo2.attach(16);
-  servo3.attach(17);
+  ServoX.attach(16);
+  ServoY.attach(3);
+  ServoF.attach(1);
   pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  pinMode(Laser, OUTPUT);
   Serial.begin(115200);
   setup_wifi();
   client.setServer(mqtt_server, 1883);
@@ -184,9 +193,9 @@ void loop() {
   if (now - lastMsg > 2000) {
     lastMsg = now;
     ++value;
-    snprintf (msg, MSG_BUFFER_SIZE, "hello world #%ld", value);
+    snprintf (msg, MSG_BUFFER_SIZE, "meow #%ld", value);
     Serial.print("Publish message: ");
     Serial.println(msg);
-    client.publish("outTopic", msg);
+    client.publish("mokaFeeder/status", msg);
   }
 }
